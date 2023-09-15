@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  app: 
+    image: app:php_8.2-fpm
+    container_name: app-mart
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    volumes:
+      - ./src/:/var/www:cached
+    ports:                  #
+      - ${NODE_PORT}:5173   #
+    # environment: #Laravelの.envファイルで設定するので本当は必要ない
+    #   - DB_CONNECTION=mysql
+    #   - DB_HOST=db
+    #   - DB_PORT=3306
+    #   - DB_DATABASE=${DB_NAME}
+    #   - DB_USERNAME=${DB_USER}
+    #   - DB_PASSWORD=${DB_PASSWORD}
+
+  web: 
+    image: web:nginx_1.20-alpine
+    build: 
+      context: .
+      dockerfile: ./docker/web/Dockerfile
+    container_name: web-mart
+    ports: 
+      - ${WEB_PORT}:80
+
+    volumes: 
+      - ./src:/var/www:cached
+    depends_on: 
+      - app
+
+  db:
+    image: db:mysql_8.0
+    container_name: db-mart
+    build: 
+      context: .
+      dockerfile: ./docker/db/Dockerfile
+    ports:
+      - "${DB_PORT}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: 'Asia/Tokyo'
+    volumes:
+      - mysql-volume:/var/lib/mysql
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin
+
+  phpmyadmin:
+    platform: 'linux/amd64'
+    container_name: phpmyadmin-mart
+    image: phpmyadmin/phpmyadmin:latest
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOSTS=db
+      - PMA_USER=${DB_USER} # user
+      - PMA_PASSWORD=${DB_PASSWORD} # hoge
+    ports:
+      - ${PMA_PORT}:80
+    depends_on:
+      - db
+  # node:
+  #   container_name: node-mart
+  #   image: node:18.7
+  #   ports:
+  #     - ${NODE_PORT}:5173
+  #   depends_on: 
+  #     - app
+volumes:
+  mysql-volume:
